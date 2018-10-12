@@ -10,7 +10,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
-
+const PrerenderSPAPlugin = require('prerender-spa-plugin')
+const Renderer = PrerenderSPAPlugin.PuppeteerRenderer
 const env = require('../config/prod.env')
 
 const webpackConfig = merge(baseWebpackConfig, {
@@ -32,6 +33,92 @@ const webpackConfig = merge(baseWebpackConfig, {
     new webpack.DefinePlugin({
       'process.env': env
     }),
+    new PrerenderSPAPlugin({
+      // Required - The path to the webpack-outputted app to prerender.
+      staticDir: path.join(__dirname, 'dist'),
+
+      // Optional - The path your rendered app should be output to.
+      // (Defaults to staticDir.)
+      // outputDir: path.join(__dirname, 'prerendered'),
+
+      // Optional - The location of index.html
+      indexPath: path.join(__dirname, 'dist', 'index.html'),
+
+      // Required - Routes to render.
+      routes: ['/'],
+
+      // Optional - Allows you to customize the HTML and output path before
+      // writing the rendered contents to a file.
+      // renderedRoute can be modified and it or an equivelant should be returned.
+      // renderedRoute format:
+      // {
+      //   route: String, // Where the output file will end up (relative to outputDir)
+      //   originalRoute: String, // The route that was passed into the renderer, before redirects.
+      //   html: String, // The rendered HTML for this route.
+      //   outputPath: String // The path the rendered HTML will be written to.
+      // }
+      postProcess (renderedRoute) {
+        // Ignore any redirects.
+        renderedRoute.route = renderedRoute.originalRoute
+        // Basic whitespace removal. (Don't use this in production.)
+        renderedRoute.html = renderedRoute.html.split(/>[\s]+</gmi).join('><')
+        // Remove /index.html from the output path if the dir name ends with a .html file extension.
+        // For example: /dist/dir/special.html/index.html -> /dist/dir/special.html
+        if (renderedRoute.route.endsWith('.html')) {
+          renderedRoute.outputPath = path.join(__dirname, 'dist', renderedRoute.route)
+        }
+
+        return renderedRoute
+      },
+
+      // Optional - Uses html-minifier (https://github.com/kangax/html-minifier)
+      // To minify the resulting HTML.
+      // Option reference: https://github.com/kangax/html-minifier#options-quick-reference
+      minify: {
+        collapseBooleanAttributes: true,
+        collapseWhitespace: true,
+        decodeEntities: true,
+        keepClosingSlash: true,
+        sortAttributes: true
+      },
+
+      // Server configuration options.
+      server: {
+        // Normally a free port is autodetected, but feel free to set this if needed.
+        port: 8001
+      },
+
+      // The actual renderer to use. (Feel free to write your own)
+      // Available renderers: https://github.com/Tribex/prerenderer/tree/master/renderers
+      renderer: new Renderer({
+        // Optional - The name of the property to add to the window object with the contents of `inject`.
+        injectProperty: '__PRERENDER_INJECTED',
+        // Optional - Any values you'd like your app to have access to via `window.injectProperty`.
+        inject: {
+          foo: 'bar'
+        },
+
+        // Optional - defaults to 0, no limit.
+        // Routes are rendered asynchronously.
+        // Use this to limit the number of routes rendered in parallel.
+        maxConcurrentRoutes: 4,
+
+        // Optional - Wait to render until the specified event is dispatched on the document.
+        // eg, with `document.dispatchEvent(new Event('custom-render-trigger'))`
+        // renderAfterDocumentEvent: 'custom-render-trigger',
+
+        // Optional - Wait to render until the specified element is detected using `document.querySelector`
+        // renderAfterElementExists: 'my-app-element',
+
+        // Optional - Wait to render until a certain amount of time has passed.
+        // NOT RECOMMENDED
+        renderAfterTime: 5000, // Wait 5 seconds.
+
+        // Other puppeteer options.
+        // (See here: https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions)
+        headless: false // Display the browser window when rendering. Useful for debugging.
+      })
+    }),
     new UglifyJsPlugin({
       uglifyOptions: {
         compress: {
@@ -46,7 +133,7 @@ const webpackConfig = merge(baseWebpackConfig, {
       filename: utils.assetsPath('css/[name].[contenthash].css'),
       // Setting the following option to `false` will not extract CSS from codesplit chunks.
       // Their CSS will instead be inserted dynamically with style-loader when the codesplit chunk has been loaded by webpack.
-      // It's currently set to `true` because we are seeing that sourcemaps are included in the codesplit bundle as well when it's `false`, 
+      // It's currently set to `true` because we are seeing that sourcemaps are included in the codesplit bundle as well when it's `false`,
       // increasing file size: https://github.com/vuejs-templates/webpack/issues/1110
       allChunks: true,
     }),
