@@ -116,7 +116,7 @@ const webpackConfig = merge(baseWebpackConfig, {
 
         // Other puppeteer options.
         // (See here: https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions)
-        headless: false // Display the browser window when rendering. Useful for debugging.
+        // headless: false // Display the browser window when rendering. Useful for debugging.
       })
     }),
     new UglifyJsPlugin({
