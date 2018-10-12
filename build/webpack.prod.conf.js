@@ -45,7 +45,7 @@ const webpackConfig = merge(baseWebpackConfig, {
       indexPath: path.join(__dirname, 'dist', 'index.html'),
 
       // Required - Routes to render.
-      routes: ['/'],
+      routes: ['/', '/about'],
 
       // Optional - Allows you to customize the HTML and output path before
       // writing the rendered contents to a file.
